@@ -15,11 +15,9 @@ const TOP = ROWS - VISIBLE_ROWS - BUFFER_SHOWN; // 렌더링 시작 줄 (18)
 const SPAWN_Y = ROWS - VISIBLE_ROWS - 2;        // 스폰 위치 (보이는 영역 바로 위)
 const CELL = 30;
 
-// ---------- 핸들링 설정 (ms) ----------
+// ---------- 게임 설정 ----------
+// DAS / ARR / DCD / SDF와 조작키는 settings.js (인게임 설정 창)에서 관리
 const CONFIG = {
-  DAS: 133,            // 자동 반복 시작까지 지연
-  ARR: 10,             // 자동 반복 간격 (0 = 즉시 벽까지)
-  SDF: 20,             // 소프트 드롭 배율
   LOCK_DELAY: 500,     // 바닥에 닿은 뒤 고정까지 시간
   MAX_LOCK_RESETS: 15, // 락 딜레이 리셋 최대 횟수
   NEXT_COUNT: 5,       // NEXT 미리보기 개수
@@ -300,12 +298,14 @@ function hardDrop() {
   while (stepDown()) dist++;
   game.score += dist * 2;
   lockPiece();
+  cutDas();
 }
 
 function holdPiece() {
   if (!game.canHold) return;
   const cur = game.piece.type;
   game.canHold = false;
+  cutDas();
   if (game.hold) {
     const h = game.hold;
     game.hold = cur;
@@ -438,33 +438,28 @@ function gravityInterval(level) {
 }
 
 // ---------- 입력 ----------
+// 키 → 동작 매핑과 DAS/ARR/DCD/SDF 값은 settings.js의 Settings에서 가져옴
 const held = { left: false, right: false, soft: false };
 let lastDir = null;   // 'left' | 'right'
 let dasTimer = 0;
 let arrTimer = 0;
+let dcdTimer = 0;
 
-const KEYMAP = {
-  ArrowLeft: 'left',
-  ArrowRight: 'right',
-  ArrowDown: 'soft',
-  Space: 'hard',
-  ArrowUp: 'cw',
-  KeyX: 'cw',
-  KeyZ: 'ccw',
-  ControlLeft: 'ccw',
-  ControlRight: 'ccw',
-  KeyA: 'r180',
-  KeyC: 'hold',
-  ShiftLeft: 'hold',
-  ShiftRight: 'hold',
-  Escape: 'pause',
-  KeyP: 'pause',
-  KeyR: 'restart',
-  Enter: 'start',
-};
+function releaseAllKeys() {
+  held.left = held.right = held.soft = false;
+  lastDir = null;
+  dasTimer = arrTimer = dcdTimer = 0;
+}
+
+// DCD: DAS가 충전된 상태에서 회전·드롭·홀드하면 잠시 연속 이동을 멈춤
+function cutDas() {
+  const { DAS, DCD } = Settings.handling;
+  if (DCD > 0 && lastDir && dasTimer >= DAS) dcdTimer = DCD;
+}
 
 document.addEventListener('keydown', (e) => {
-  const action = KEYMAP[e.code];
+  if (Settings.isOpen()) return;
+  const action = Settings.actionFor(e.code);
   if (!action) return;
   e.preventDefault();
   if (e.repeat) return; // 브라우저 키 반복 무시 (DAS/ARR 직접 처리)
@@ -475,6 +470,7 @@ document.addEventListener('keydown', (e) => {
     lastDir = action;
     dasTimer = 0;
     arrTimer = 0;
+    dcdTimer = 0;
   }
   if (action === 'soft') held.soft = true;
 
@@ -498,15 +494,15 @@ document.addEventListener('keydown', (e) => {
     case 'left': move(-1); break;
     case 'right': move(1); break;
     case 'hard': hardDrop(); break;
-    case 'cw': rotate(1); break;
-    case 'ccw': rotate(-1); break;
-    case 'r180': rotate(2); break;
+    case 'cw': if (rotate(1)) cutDas(); break;
+    case 'ccw': if (rotate(-1)) cutDas(); break;
+    case 'r180': if (rotate(2)) cutDas(); break;
     case 'hold': holdPiece(); break;
   }
 });
 
 document.addEventListener('keyup', (e) => {
-  const action = KEYMAP[e.code];
+  const action = Settings.actionFor(e.code);
   if (!action) return;
   if (action === 'left' || action === 'right') {
     held[action] = false;
@@ -521,9 +517,19 @@ document.addEventListener('keyup', (e) => {
 });
 
 window.addEventListener('blur', () => {
-  held.left = held.right = held.soft = false;
-  lastDir = null;
+  releaseAllKeys();
   if (game.state === 'playing') togglePause();
+});
+
+// 설정 창을 열면 눌린 키를 풀고 일시정지
+Settings.on('open', () => {
+  releaseAllKeys();
+  if (game.state === 'playing') togglePause();
+});
+
+// 키를 바꾸면 오버레이 안내 문구도 갱신
+Settings.on('change', () => {
+  if (game.state !== 'playing') el.overlayMsg.textContent = overlayHint();
 });
 
 el.startBtn.addEventListener('click', () => {
@@ -542,10 +548,27 @@ function startGame() {
   spawnNext();
 }
 
+// 현재 키 설정으로 오버레이 안내 문구를 만듦 (키가 없는 동작은 생략)
+function keyHint(actions, verb) {
+  const keys = actions.map((a) => Settings.keysText(a)).filter(Boolean);
+  return keys.length ? `${keys.join(' 또는 ')} 키로 ${verb}` : `버튼을 눌러 ${verb}`;
+}
+
+function overlayHint() {
+  switch (game.state) {
+    case 'paused':
+      return keyHint(['pause', 'start'], '계속');
+    case 'over':
+      return `SCORE ${game.score.toLocaleString()}\nLINES ${game.lines}\n${keyHint(['restart', 'start'], '재시작')}`;
+    default:
+      return keyHint(['start'], '시작');
+  }
+}
+
 function togglePause() {
   if (game.state === 'playing') {
     game.state = 'paused';
-    showOverlay('PAUSED', 'Esc / P 또는 Enter로 계속', 'RESUME');
+    showOverlay('PAUSED', overlayHint(), 'RESUME');
   } else if (game.state === 'paused') {
     game.state = 'playing';
     hideOverlay();
@@ -554,7 +577,7 @@ function togglePause() {
 
 function gameOver() {
   game.state = 'over';
-  showOverlay('GAME OVER', `SCORE ${game.score.toLocaleString()}\nLINES ${game.lines}\nR 또는 Enter로 재시작`, 'RETRY');
+  showOverlay('GAME OVER', overlayHint(), 'RETRY');
 }
 
 function showOverlay(title, msg, btn) {
@@ -582,17 +605,22 @@ function update(dt) {
   if (game.state !== 'playing' || !game.piece) return;
   game.time += dt;
 
-  // DAS / ARR
+  const { DAS, ARR, SDF } = Settings.handling;
+
+  // DAS / ARR (+ DCD)
   const dir = lastDir === 'left' ? -1 : lastDir === 'right' ? 1 : 0;
   if (dir !== 0) {
     dasTimer += dt;
-    if (dasTimer >= CONFIG.DAS) {
-      if (CONFIG.ARR === 0) {
+    if (dasTimer >= DAS) {
+      if (dcdTimer > 0) {
+        dcdTimer = Math.max(0, dcdTimer - dt);
+        arrTimer = 0;
+      } else if (ARR === 0) {
         while (move(dir));
       } else {
         arrTimer += dt;
-        while (arrTimer >= CONFIG.ARR) {
-          arrTimer -= CONFIG.ARR;
+        while (arrTimer >= ARR) {
+          arrTimer -= ARR;
           if (!move(dir)) { arrTimer = 0; break; }
         }
       }
@@ -600,17 +628,23 @@ function update(dt) {
   }
 
   // 중력 + 소프트 드롭
-  let g = 1 / gravityInterval(game.level); // 칸 / ms
   const soft = held.soft;
-  if (soft) g *= CONFIG.SDF;
-  game.dropAcc += g * dt;
-  while (game.dropAcc >= 1) {
-    game.dropAcc -= 1;
-    if (stepDown()) {
-      if (soft) game.score += 1;
-    } else {
-      game.dropAcc = 0;
-      break;
+  if (soft && SDF === Infinity) {
+    // SDF ∞: 즉시 바닥까지 (고정은 락 딜레이를 따름)
+    while (stepDown()) game.score += 1;
+    game.dropAcc = 0;
+  } else {
+    let g = 1 / gravityInterval(game.level); // 칸 / ms
+    if (soft) g *= SDF;
+    game.dropAcc += g * dt;
+    while (game.dropAcc >= 1) {
+      game.dropAcc -= 1;
+      if (stepDown()) {
+        if (soft) game.score += 1;
+      } else {
+        game.dropAcc = 0;
+        break;
+      }
     }
   }
 
@@ -772,4 +806,5 @@ function loop(ts) {
 }
 
 game = createGame();
+el.overlayMsg.textContent = overlayHint();
 requestAnimationFrame(loop);

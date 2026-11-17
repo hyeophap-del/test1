@@ -33,8 +33,9 @@
       <div id="frame" class="board-frame"></div>
       <div id="overlay" class="overlay">
         <h1 class="logo">TETR<span>.JS</span></h1>
-        <p id="overlay-msg" class="overlay-msg">Enter 또는 버튼을 눌러 시작</p>
+        <p id="overlay-msg" class="overlay-msg"></p>
         <button id="start-btn" class="btn">START</button>
+        <button type="button" class="btn btn-sub" data-open-settings>SETTINGS</button>
       </div>
     </section>
 
@@ -45,20 +46,13 @@
         <canvas id="next" width="120" height="380"></canvas>
       </div>
 
-      <table class="controls">
-        <tr><td>← →</td><td>이동</td></tr>
-        <tr><td>↓</td><td>소프트 드롭</td></tr>
-        <tr><td>Space</td><td>하드 드롭</td></tr>
-        <tr><td>↑ / X</td><td>시계 회전</td></tr>
-        <tr><td>Z / Ctrl</td><td>반시계 회전</td></tr>
-        <tr><td>A</td><td>180° 회전</td></tr>
-        <tr><td>C / Shift</td><td>홀드</td></tr>
-        <tr><td>Esc / P</td><td>일시정지</td></tr>
-        <tr><td>R</td><td>재시작</td></tr>
-      </table>
+      <button type="button" class="side-btn" data-open-settings>⚙ 키 / 핸들링 설정</button>
+      <!-- settings.js가 현재 키 설정으로 채움 -->
+      <table id="controls" class="controls"></table>
     </section>
   </main>
 
+  <script src="settings.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
