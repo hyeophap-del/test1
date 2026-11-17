@@ -1,0 +1,235 @@
+:root {
+  --bg: #0b0d1a;
+  --bg2: #151a33;
+  --panel: rgba(20, 24, 48, 0.85);
+  --border: #3b4380;
+  --accent: #7d6bff;
+  --text: #e6e8ff;
+  --muted: #8a8fb8;
+  --danger: #ff3b5c;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: radial-gradient(ellipse at top, var(--bg2), var(--bg) 70%);
+  color: var(--text);
+  font-family: "Segoe UI", "Malgun Gothic", system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+}
+
+.game {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+/* ---------- 사이드 패널 ---------- */
+.side {
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 60px; /* 보드 버퍼 영역만큼 내려서 정렬 */
+}
+
+.side.left {
+  align-items: flex-end;
+}
+
+.panel {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px 10px;
+  box-shadow: 0 0 18px rgba(125, 107, 255, 0.15);
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+canvas {
+  display: block;
+}
+
+/* ---------- 통계 ---------- */
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: right;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 액션 텍스트 (TETR.IO 스타일) ---------- */
+.actions {
+  min-height: 150px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.action {
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 1px;
+  text-align: right;
+  animation: pop 1.6s ease-out forwards;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.action.clear { color: #ffffff; }
+.action.quad { color: #3ad3c8; font-size: 28px; }
+.action.tspin { color: #c76bff; }
+.action.b2b { color: #ffd34a; font-size: 16px; }
+.action.combo { color: #7dc8ff; font-size: 18px; }
+.action.pc { color: #ff7de1; font-size: 26px; }
+
+@keyframes pop {
+  0% { opacity: 0; transform: translateX(20px) scale(1.4); }
+  12% { opacity: 1; transform: translateX(0) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-10px); }
+}
+
+/* ---------- 보드 ---------- */
+.board-wrap {
+  position: relative;
+  width: 300px;
+  height: 660px;
+}
+
+.board-frame {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 60px;
+  bottom: 0;
+  pointer-events: none;
+  box-shadow: 0 0 0 3px var(--border), 0 0 40px rgba(125, 107, 255, 0.25);
+  transition: box-shadow 0.25s;
+}
+
+.board-frame.danger {
+  box-shadow: 0 0 0 3px var(--danger), 0 0 40px rgba(255, 59, 92, 0.45);
+}
+
+/* ---------- 오버레이 ---------- */
+.overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 60px;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(8, 10, 22, 0.82);
+  backdrop-filter: blur(2px);
+  text-align: center;
+  padding: 20px;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.logo {
+  font-size: 46px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.logo span {
+  color: var(--accent);
+}
+
+.overlay-msg {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 34px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: transform 0.1s, filter 0.1s;
+}
+
+.btn:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+/* ---------- 조작키 ---------- */
+.controls {
+  font-size: 12px;
+  color: var(--muted);
+  border-collapse: collapse;
+}
+
+.controls td {
+  padding: 2px 4px;
+}
+
+.controls td:first-child {
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 작은 화면 대응 */
+@media (max-height: 760px) {
+  .game { transform: scale(0.85); }
+}
+
+@media (max-height: 640px) {
+  .game { transform: scale(0.7); }
+}
